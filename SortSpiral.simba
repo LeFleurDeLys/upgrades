@@ -6,17 +6,13 @@
  *}
 function TPointArray.SortSpiral(Center: TPoint; RadialSearchStartDegree, RadialSearchEndDegree: Int32 = 180; ClockWise: Boolean = True): TPointArray;
 var
-  Filtered: TPointArray;
-  i, c, StartDeg, EndDeg: Int32;
-  Angle: Double;
+  Filtered, SortCoords: TPointArray;
+  i, c, StartDeg, EndDeg, dx_orig, dy_orig: Int32;
+  Angle, MidDeg, RotRad: Double;
+  SinA, CosA: Double;
 
-  procedure GetSpiralInfo(Pt: TPoint; out Layer, Offset: Int32);
-  var
-    dx, dy: Int32;
+  procedure GetSpiralInfo(dx, dy: Int32; out Layer, Offset: Int32);
   begin
-    dx := Pt.X - Center.X;
-    dy := Pt.Y - Center.Y;
-
     if (Abs(dx) > Abs(dy)) then
       Layer := Abs(dx)
     else
@@ -47,12 +43,12 @@ var
   begin
     I := L;
     J := R;
-    GetSpiralInfo(Self[(L + R) div 2], PivotLayer, PivotOffset);
+    GetSpiralInfo(SortCoords[(L + R) div 2].X, SortCoords[(L + R) div 2].Y, PivotLayer, PivotOffset);
 
     repeat
       while True do
       begin
-        GetSpiralInfo(Self[I], L_Lay, L_Off);
+        GetSpiralInfo(SortCoords[I].X, SortCoords[I].Y, L_Lay, L_Off);
         if (L_Lay < PivotLayer) or ((L_Lay = PivotLayer) and ((ClockWise and (L_Off < PivotOffset)) or (not ClockWise and (L_Off > PivotOffset)))) then
           Inc(I)
         else
@@ -61,7 +57,7 @@ var
 
       while True do
       begin
-        GetSpiralInfo(Self[J], R_Lay, R_Off);
+        GetSpiralInfo(SortCoords[J].X, SortCoords[J].Y, R_Lay, R_Off);
         if (R_Lay > PivotLayer) or ((R_Lay = PivotLayer) and ((ClockWise and (R_Off > PivotOffset)) or (not ClockWise and (R_Off < PivotOffset)))) then
           Dec(J)
         else
@@ -73,6 +69,11 @@ var
         Tmp := Self[I];
         Self[I] := Self[J];
         Self[J] := Tmp;
+
+        Tmp := SortCoords[I];
+        SortCoords[I] := SortCoords[J];
+        SortCoords[J] := Tmp;
+
         Inc(I);
         Dec(J);
       end;
@@ -115,6 +116,36 @@ begin
     end;
     SetLength(Filtered, c);
     Self := Filtered;
+  end;
+
+  SetLength(SortCoords, Length(Self));
+
+  if (RadialSearchStartDegree = RadialSearchEndDegree) then
+  begin
+    for i := 0 to High(Self) do
+    begin
+      SortCoords[i].X := Self[i].X - Center.X;
+      SortCoords[i].Y := Self[i].Y - Center.Y;
+    end;
+  end
+  else
+  begin
+    if StartDeg > EndDeg then
+      MidDeg := (StartDeg + EndDeg + 360) / 2
+    else
+      MidDeg := (StartDeg + EndDeg) / 2;
+
+    RotRad := (MidDeg + 90) * (Pi / 180.0);
+    CosA := Cos(RotRad);
+    SinA := Sin(RotRad);
+
+    for i := 0 to High(Self) do
+    begin
+      dx_orig := Self[i].X - Center.X;
+      dy_orig := Self[i].Y - Center.Y;
+      SortCoords[i].X := Round(dx_orig * CosA + dy_orig * SinA);
+      SortCoords[i].Y := Round(-dx_orig * SinA + dy_orig * CosA);
+    end;
   end;
 
   if (High(Self) > 0) then
