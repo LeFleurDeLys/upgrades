@@ -2,36 +2,56 @@
  * Sorts a TPointArray from a central TPoint in a spiraling manner (layer per layer).
  0 Degree is the Rightmost point of the target at Height/2  (East on a circle)
  If Start and End degrees are the same, we do a full circle check.
- Turn ClockWise ON/OFF to determine what direction we go
+ Turn ClockWise ON/OFF to determine the motion of the arm
+ StepSize is the width of the arm in pixels 
+ Use "Circular" or "Square" to change spiraling pattern.
+
  *}
-function TPointArray.SortSpiral(Center: TPoint; RadialSearchStartDegree, RadialSearchEndDegree: Int32 = 180; ClockWise: Boolean = True): TPointArray;
+function TPointArray.SortSpiral(Center: TPoint; RadialSearchStartDegree, RadialSearchEndDegree: Int32 = 180; ClockWise: Boolean = True; StepSize: Int32 = 7; Shape: String = 'Circular'): TPointArray;
 var
   Filtered, SortCoords: TPointArray;
   i, c, StartDeg, EndDeg, dx_orig, dy_orig: Int32;
   Angle, MidDeg, RotRad: Double;
   SinA, CosA: Double;
+  IsSquare: Boolean;
 
   procedure GetSpiralInfo(dx, dy: Int32; out Layer, Offset: Int32);
+  var
+    L, RawOffset: Int32;
   begin
-    if (Abs(dx) > Abs(dy)) then
-      Layer := Abs(dx)
-    else
-      Layer := Abs(dy);
-
-    if (Layer = 0) then
+    if IsSquare then
     begin
-      Offset := 0;
-      Exit;
-    end;
+      L := Abs(dx);
+      if Abs(dy) > L then L := Abs(dy);
 
-    if (dy = -Layer) then
-      Offset := dx + Layer
-    else if (dx = Layer) then
-      Offset := 3 * Layer + dy
-    else if (dy = Layer) then
-      Offset := 5 * Layer - dx
+      Layer := L div StepSize;
+
+      if L = 0 then
+      begin
+        Offset := 0;
+        Exit;
+      end;
+
+      // Map perimeter to range -4L..4L starting from West (Clockwise)
+      if (dx = -L) and (dy <= 0) then       // West to North-West
+        RawOffset := -4 * L - dy
+      else if (dy = -L) then                // North-West to North-East
+        RawOffset := -2 * L + dx
+      else if (dx = L) then                 // North-East to South-East
+        RawOffset := dy
+      else if (dy = L) then                 // South-East to South-West
+        RawOffset := 2 * L - dx
+      else                                  // South-West to West
+        RawOffset := 4 * L - dy;
+
+      // Normalize to maintain angular sorting order independent of Layer magnitude
+      Offset := Round((RawOffset * 10000) / L);
+    end
     else
-      Offset := 7 * Layer - dy;
+    begin
+      Layer := Round(Sqrt(dx * dx + dy * dy)) div StepSize;
+      Offset := Round(ArcTan2(dy, dx) * 10000);
+    end;
   end;
 
   procedure QuickSort(L, R: Int32);
@@ -84,6 +104,9 @@ var
   end;
 
 begin
+  if StepSize < 1 then StepSize := 1;
+  IsSquare := (Shape = 'Square') or (Shape = 'square');
+
   if (RadialSearchStartDegree <> RadialSearchEndDegree) then
   begin
     SetLength(Filtered, Length(Self));
