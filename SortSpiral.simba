@@ -1,0 +1,122 @@
+{**
+ * Sorts a TPointArray from a central TPoint in a spiraling manner (layer per layer).
+ 0 Degree is the Rightmost point of the target at Height/2  (East on a circle)
+ If Start and End degrees are the same, we do a full circle check.
+ Turn ClockWise ON/OFF to determine what direction we go
+ *}
+function TPointArray.SortSpiral(Center: TPoint; RadialSearchStartDegree, RadialSearchEndDegree: Int32 = 180; ClockWise: Boolean = True): TPointArray;
+var
+  Filtered: TPointArray;
+  i, c, StartDeg, EndDeg: Int32;
+  Angle: Double;
+
+  procedure GetSpiralInfo(Pt: TPoint; out Layer, Offset: Int32);
+  var
+    dx, dy: Int32;
+  begin
+    dx := Pt.X - Center.X;
+    dy := Pt.Y - Center.Y;
+
+    if (Abs(dx) > Abs(dy)) then
+      Layer := Abs(dx)
+    else
+      Layer := Abs(dy);
+
+    if (Layer = 0) then
+    begin
+      Offset := 0;
+      Exit;
+    end;
+
+    if (dy = -Layer) then
+      Offset := dx + Layer
+    else if (dx = Layer) then
+      Offset := 3 * Layer + dy
+    else if (dy = Layer) then
+      Offset := 5 * Layer - dx
+    else
+      Offset := 7 * Layer - dy;
+  end;
+
+  procedure QuickSort(L, R: Int32);
+  var
+    I, J: Int32;
+    PivotLayer, PivotOffset: Int32;
+    L_Lay, L_Off, R_Lay, R_Off: Int32;
+    Tmp: TPoint;
+  begin
+    I := L;
+    J := R;
+    GetSpiralInfo(Self[(L + R) div 2], PivotLayer, PivotOffset);
+
+    repeat
+      while True do
+      begin
+        GetSpiralInfo(Self[I], L_Lay, L_Off);
+        if (L_Lay < PivotLayer) or ((L_Lay = PivotLayer) and ((ClockWise and (L_Off < PivotOffset)) or (not ClockWise and (L_Off > PivotOffset)))) then
+          Inc(I)
+        else
+          Break;
+      end;
+
+      while True do
+      begin
+        GetSpiralInfo(Self[J], R_Lay, R_Off);
+        if (R_Lay > PivotLayer) or ((R_Lay = PivotLayer) and ((ClockWise and (R_Off > PivotOffset)) or (not ClockWise and (R_Off < PivotOffset)))) then
+          Dec(J)
+        else
+          Break;
+      end;
+
+      if I <= J then
+      begin
+        Tmp := Self[I];
+        Self[I] := Self[J];
+        Self[J] := Tmp;
+        Inc(I);
+        Dec(J);
+      end;
+    until I > J;
+
+    if L < J then QuickSort(L, J);
+    if I < R then QuickSort(I, R);
+  end;
+
+begin
+  if (RadialSearchStartDegree <> RadialSearchEndDegree) then
+  begin
+    SetLength(Filtered, Length(Self));
+    c := 0;
+
+    StartDeg := (RadialSearchStartDegree mod 360 + 360) mod 360;
+    EndDeg := (RadialSearchEndDegree mod 360 + 360) mod 360;
+
+    for i := 0 to High(Self) do
+    begin
+      Angle := ArcTan2(Self[i].Y - Center.Y, Self[i].X - Center.X) * (180.0 / Pi);
+      if Angle < 0 then Angle := Angle + 360.0;
+
+      if (StartDeg <= EndDeg) then
+      begin
+        if (Angle >= StartDeg) and (Angle <= EndDeg) then
+        begin
+          Filtered[c] := Self[i];
+          Inc(c);
+        end;
+      end
+      else
+      begin
+        if (Angle >= StartDeg) or (Angle <= EndDeg) then
+        begin
+          Filtered[c] := Self[i];
+          Inc(c);
+        end;
+      end;
+    end;
+    SetLength(Filtered, c);
+    Self := Filtered;
+  end;
+
+  if (High(Self) > 0) then
+    QuickSort(0, High(Self));
+end;                                                              
