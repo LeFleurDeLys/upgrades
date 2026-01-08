@@ -119,4 +119,6 @@ begin
 
   if (High(Self) > 0) then
     QuickSort(0, High(Self));
-end;                                                              
+
+  Result := Self;
+end;
