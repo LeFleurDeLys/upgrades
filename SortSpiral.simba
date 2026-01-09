@@ -9,20 +9,21 @@
  *}
 function TPointArray.SortSpiral(Center: TPoint; RadialSearchStartDegree, RadialSearchEndDegree: Int32 = 180; ClockWise: Boolean = True; StepSize: Int32 = 7; Shape: String = 'Circular'): TPointArray;
 var
-  Filtered, SortCoords: TPointArray;
-  i, c, StartDeg, EndDeg, dx_orig, dy_orig: Int32;
-  Angle, MidDeg, RotRad: Double;
-  SinA, CosA: Double;
-  IsSquare: Boolean;
+  Filtered: TPointArray;
+  i, c, StartDeg, EndDeg: Int32;
+  Angle: Double;
 
-  procedure GetSpiralInfo(dx, dy: Int32; out Layer, Offset: Int32);
+  procedure GetSpiralInfo(Pt: TPoint; out Layer, Offset: Int32);
   var
-    L, RawOffset: Int32;
+    dx, dy: Int32;
   begin
-    if IsSquare then
-    begin
-      L := Abs(dx);
-      if Abs(dy) > L then L := Abs(dy);
+    dx := Pt.X - Center.X;
+    dy := Pt.Y - Center.Y;
+
+    if (Abs(dx) > Abs(dy)) then
+      Layer := Abs(dx)
+    else
+      Layer := Abs(dy);
 
       Layer := L div StepSize;
 
@@ -175,4 +176,4 @@ begin
     QuickSort(0, High(Self));
 
   Result := Self;
-end;                                         
+end;
